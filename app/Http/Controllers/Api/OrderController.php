@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Dish;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\OrderResource;
+use App\Http\Requests\UpdateOrderStatusRequest;
 
 class OrderController extends Controller
 {
@@ -60,6 +61,24 @@ class OrderController extends Controller
     public function show($id)
     {
         $order = Order::with('items.dish')->findOrFail($id);
+        return new OrderResource($order);
+    }
+
+    public function update(UpdateOrderStatusRequest $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        $order->update($request->only('status'));
+        return new OrderResource($order);
+    }
+
+    public function cancel($id)
+    {
+        $order = Order::findOrFail($id);
+
+        if ($order->status === 'delivered') {
+            return response()->json(['message' => 'Delivered orders cannot be cancelled.'], 422);
+        }
+        $order->update(['status' => 'cancelled']);
         return new OrderResource($order);
     }
 }
