@@ -74,16 +74,13 @@ class OrderController extends Controller
     public function update(UpdateOrderStatusRequest $request, $id)
     {
         $order = Order::findOrFail($id);
+        $newStatus = $request->status;
 
-        if ($order->status === 'cancelled') {
-            return response()->json(['message' => 'Cancelled orders cannot be updated.'], 422);
+        if (!Order::canChangeStatus($order->status, $newStatus)) {
+            return response()->json(['message' => 'Cannot change order status from {$order->status}'], 422);
         }
 
-        if ($order->status === 'delivered') {
-            return response()->json(['message' => 'Delivered orders cannot be updated.'], 422);
-        }
-
-        $order->update($request->only('status'));
+        $order->update(['status' => $newStatus]);
         return new OrderResource($order);
     }
 
@@ -91,8 +88,8 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($id);
 
-        if ($order->status === 'delivered') {
-            return response()->json(['message' => 'Delivered orders cannot be cancelled.'], 422);
+        if (!Order::canChangeStatus($order->status, Order::STATUS_CANCELLED)) {
+            return response()->json(['message' => "Cannot cancel order from {$order->status}"], 422);
         }
         $order->update(['status' => 'cancelled']);
         return new OrderResource($order);
