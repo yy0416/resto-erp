@@ -10,6 +10,7 @@ use App\Models\Dish;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\UpdateOrderStatusRequest;
+use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
@@ -52,11 +53,17 @@ class OrderController extends Controller
         });
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with('items.dish')->get();
-        return OrderResource::collection($orders);
+        $query = Order::with('items.dish');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return OrderResource::collection($query->get());
     }
+
 
     public function show($id)
     {
@@ -67,6 +74,15 @@ class OrderController extends Controller
     public function update(UpdateOrderStatusRequest $request, $id)
     {
         $order = Order::findOrFail($id);
+
+        if ($order->status === 'cancelled') {
+            return response()->json(['message' => 'Cancelled orders cannot be updated.'], 422);
+        }
+
+        if ($order->status === 'delivered') {
+            return response()->json(['message' => 'Delivered orders cannot be updated.'], 422);
+        }
+
         $order->update($request->only('status'));
         return new OrderResource($order);
     }
