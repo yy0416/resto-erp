@@ -22,7 +22,10 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => 'required|exists:customers,id',
+            'phone' => 'required|string|max:20',
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'notes' => 'nullable|string|max:1000',
             'restaurant_id' => 'required|exists:restaurants,id',
 
             'items' => 'required|array|min:1',

@@ -11,18 +11,32 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use Illuminate\Http\Request;
+use App\Models\Customer;
 
 class OrderController extends Controller
 {
     public function store(StoreOrderRequest $request)
     {
         return DB::transaction(function () use ($request) {
+            //自动识别/创建客户
+            $customer = null;
+            if ($request->filled('phone')) {
+                $customer = Customer::where('phone', $request->phone)->first();
+            }
+            if (!$customer) {
+                $customer = Customer::create([
+                    'name' => $request->input('name', 'Client'),
+                    'email' => $request->input('email', null),
+                    'phone' => $request->input('phone', null),
+                    'notes' => $request->input('notes', null),
+                ]);
+            }
 
-            // 1️⃣ 创建订单（先不算总价）
+            // 创建订单（先不算总价）
             $order = Order::create([
-                'customer_id' => $request->customer_id,
+                'customer_id' => $customer->id,
                 'restaurant_id' => $request->restaurant_id,
-                'status' => 'pending',
+                'status' => Order::STATUS_PENDING,
                 'total_price' => 0,
             ]);
 
