@@ -5,9 +5,16 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\RestaurantController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DishController;
 
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 Route::post('/restaurants', [RestaurantController::class, 'store']);
+
+Route::get('/dishes', [DishController::class, 'index']);
+Route::post('/dishes', [DishController::class, 'store']);
+Route::get('/dishes/{id}', [DishController::class, 'show']);
+Route::put('/dishes/{id}', [DishController::class, 'update']);
+Route::delete('/dishes/{id}', [DishController::class, 'destroy']);
 
 Route::post('/orders', [OrderController::class, 'store']);
 Route::get('/orders', [OrderController::class, 'index']);

@@ -4,14 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\OrderItem;
 
 class Order extends Model
 {
     /** @use HasFactory<\Database\Factories\OrderFactory> */
     use HasFactory;
-    protected $fillable = ['customer_id', 'restaurant_id', 'total_price', 'status'];
+    protected $fillable = [
+        'customer_id',
+        'restaurant_id',
+        'total_price',
+        'status',
+        'order_type',
+        'table_number',
+        'started_at'
+    ];
     protected $casts = [
         'total_price' => 'float',
+        'started_at' => 'datetime',
     ];
 
 
@@ -26,9 +36,9 @@ class Order extends Model
     public static function canChangeStatus(string $from, string $to): bool
     {
         $transitions = [
-            'pending' => ['paid', 'cancelled'],
-            'paid' => ['preparing', 'cancelled'],
-            'preparing' => ['delivered'],
+            'pending' => ['paid', 'preparing', 'delivered', 'cancelled'],
+            'paid' => ['preparing', 'delivered', 'cancelled'],
+            'preparing' => ['delivered', 'cancelled'],
             'delivered' => [],
             'cancelled' => [],
         ];

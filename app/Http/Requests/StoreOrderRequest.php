@@ -31,6 +31,9 @@ class StoreOrderRequest extends FormRequest
             'items' => 'required|array|min:1',
             'items.*.dish_id' => 'required|exists:dishes,id',
             'items.*.quantity' => 'required|integer|min:1',
+
+            'order_type' => 'required|string|in:dine_in,takeaway',
+            'table_number' => 'nullable|integer|required_if:order_type,dine_in',
         ];
     }
 }

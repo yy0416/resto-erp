@@ -1,59 +1,40 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🍽️ Resto-ERP & 厨房大屏一体化系统
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+这是一个为自己餐厅定制的、集成了**前台点餐网站**、**后台ERP管理**以及**厨房大屏（KDS）**的一体化餐饮SaaS系统。
 
-## About Laravel
+## 🛠️ 技术栈
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **后端：** PHP 11 (Laravel 框架)
+- **前端：** Vite + TailwindCSS 4.0 (现代化样式库) + Axios (异步请求)
+- **数据库：** MySQL
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📌 当前项目基建进度 (4个月前回顾)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- [x] Laravel 框架核心骨架初始化
+- [x] 前端构建工具配置 (Vite 联动 TailwindCSS 4.0 核心配置)
+- [x] 引入 Axios 依赖，用于前后端异步 API 数据交互
+- [ ] 数据库核心表结构设计 (Menus, Orders, Tables)
+- [ ] 顾客前台点餐 H5 页面 UI 开发
 
-## Learning Laravel
+## 🎯 核心待办开发计划 (TODO)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 1. 数据库与业务逻辑 (MySQL + Eloquent ORM)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- 创建 `menus` 菜品表（管理菜品分类、法语/中文名称、价格）
+- 创建 `orders` 订单表（管理订单状态：已下单 `pending`、制作中 `cooking`、已上菜 `served`、已结账 `paid`）
 
-## Laravel Sponsors
+### 2. 实时厨房大屏 (KDS)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **技术选型：** 计划使用 Laravel Reverb (Laravel 11自带的 WebSocket 广播) 或 SSE。
+- **业务目标：** 顾客在手机端确认下单后，数据异步发送至后台，厨房大屏不刷新页面即时接收弹窗，并触发语音播报。
 
-### Premium Partners
+### 3. ERP 营业额统计
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- 编写每日/每周/每月 Chiffre d'affaires (营业额) 统计逻辑。
+- _留作后续与法国会计和警察局对接合规收入数据的导出底座。_
 
-## Contributing
+## 🚀 本地开发环境启动
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. 确保安装了 PHP 8.x+ 和 Node.js
+2. 启动后端：`php artisan serve`
+3. 启动前端监听：`npm run dev`
