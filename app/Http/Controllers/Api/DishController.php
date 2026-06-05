@@ -22,35 +22,42 @@ class DishController extends Controller
      */
     public function store(Request $request)
     {
-        // 严格的表单验证
+        // 1. 严格验证表单
         $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 最大2MB
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $imageUrl = null;
+        // 🎯 核心防爆盾：捕获数据库所有的不合规行为（例如漏掉必填字段或模型被锁）
+        try {
+            $imageUrl = null;
 
-        // 如果管理员上传了图片，把它存进 local 的 public 磁盘
-        if ($request->hasFile('image')) {
-            // 存储到 storage/app/public/dishes 目录下
-            $path = $request->file('image')->store('dishes', 'public');
-            // 生成前端可以直接访问的 URL 路径
-            $imageUrl = Storage::url($path);
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('dishes', 'public');
+                $imageUrl = Storage::url($path);
+            }
+
+            // 写入数据库
+            $dish = Dish::create([
+                'name' => $request->name,
+                'price' => $request->price,
+                'image_url' => $imageUrl ?? '', // 确保不是 null，防止迁移未生效报错
+                'restaurant_id' => 1, // 临时写死，后续会改成动态选择餐厅
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '菜品添加成功！',
+                'data' => $dish
+            ], 201);
+        } catch (\Exception $e) {
+            // 🌟 核心拦截：如果崩了，绝不抛出庞大的 HTML 网页，而是直接把纯文本错误原因喂给前端！
+            return response()->json([
+                'success' => false,
+                'error_message' => 'Laravel 数据库报错: ' . $e->getMessage()
+            ], 422); // 使用 422 状态码让前端走 catch 逻辑
         }
-
-        // 写入数据库
-        $dish = Dish::create([
-            'name' => $request->name,
-            'price' => $request->price,
-            'image_url' => $imageUrl, // 💡 确保你的 dishes 表里有这个字段，没有的话可以先不传
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => '菜品添加成功！',
-            'data' => $dish
-        ], 201);
     }
 
     /**

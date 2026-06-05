@@ -41,27 +41,34 @@
             <span>Menu du jour (选择菜品)</span>
         </h3>
 
-
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <template x-for="dish in dishes" :key="dish.id">
-                <div class="flex flex-col justify-between p-4 bg-white rounded-2xl border-2 border-gray-100 shadow-sm transition hover:border-blue-100 min-h-[160px]">
-                    <div>
-                        <span class="font-extrabold text-gray-800 block text-lg" x-text="dish.name"></span>
-                        <span class="text-sm text-gray-500 font-semibold block mt-0.5" x-text="dish.price.toFixed(2) + ' €'"></span>
+                <div class="flex flex-col justify-between bg-white rounded-2xl border-2 border-gray-100 shadow-sm transition hover:border-blue-100 overflow-hidden">
+
+                    <div class="w-full h-40 bg-gray-50 relative overflow-hidden border-b border-gray-100">
+                        <img :src="dish.image_url ? dish.image_url : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop'"
+                            :alt="dish.name"
+                            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105">
                     </div>
 
-                    <div class="flex items-center justify-between mt-4 border-t pt-3 border-gray-50">
-                        <button @click="if(dish.qty > 0) dish.qty--"
-                            :class="dish.qty > 0 ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
-                            class="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 border border-transparent select-none">-</button>
+                    <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                            <span class="font-extrabold text-gray-800 block text-lg" x-text="dish.name"></span>
+                            <span class="text-sm text-gray-500 font-semibold block mt-0.5" x-text="dish.price.toFixed(2) + ' €'"></span>
+                        </div>
 
-                        <span :class="dish.qty > 0 ? 'text-blue-600 font-black text-xl' : 'text-gray-400 font-bold text-lg'"
-                            class="w-8 text-center font-mono"
-                            x-text="dish.qty"></span>
+                        <div class="flex items-center justify-between mt-4 border-t pt-3 border-gray-50">
+                            <button @click="if(dish.qty > 0) dish.qty--"
+                                :class="dish.qty > 0 ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+                                class="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 border border-transparent select-none">-</button>
 
-                        <button @click="dish.qty++"
-                            class="bg-green-500 hover:bg-green-600 active:scale-95 text-white w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 shadow-md shadow-green-100 select-none">+</button>
+                            <span :class="dish.qty > 0 ? 'text-blue-600 font-black text-xl' : 'text-gray-400 font-bold text-lg'"
+                                class="w-8 text-center font-mono"
+                                x-text="dish.qty"></span>
+
+                            <button @click="dish.qty++"
+                                class="bg-green-500 hover:bg-green-600 active:scale-95 text-white w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 shadow-md shadow-green-100 select-none">+</button>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -130,15 +137,12 @@
                 currentOrderStatus: null,
                 historyOrders: [],
                 statusTimer: null,
-
-                // 🌟 1. 这里改成空数组，不再硬编码任何菜品！
                 dishes: [],
 
                 initTable() {
                     const urlParams = new window.URLSearchParams(window.location.search);
                     this.table_number = urlParams.get('table') || '1';
 
-                    // 🌟 2. 初始化时，同时拉取“真实菜单”和“这桌的历史订单”
                     this.fetchMenu();
                     this.fetchHistory();
 
@@ -147,24 +151,22 @@
                     }, 4000);
                 },
 
-                // 🌟 3. 新增核心函数：从后端数据库动态获取菜品列表
                 fetchMenu() {
-                    fetch('/api/dishes') // 👈 对应你后端的菜品 API 路由
+                    fetch('/api/dishes')
                         .then(r => {
                             if (!r.ok) throw new Error('无法获取菜单');
                             return r.json();
                         })
                         .then(res => {
-                            // 适配后端的返回结构。如果使用了 JsonResource，数据一般在 res.data 里
                             const menuItems = res.data || res;
 
                             if (Array.isArray(menuItems)) {
-                                // 🌟 4. 把数据库里的菜品映射给前端，并贴心地强制加上 qty: 0 供点单器计数
+                                // 🎯 新增位置 2：在 map 映射中，把数据库的 image_url 接住传给前端
                                 this.dishes = menuItems.map(dish => ({
                                     id: dish.id,
                                     name: dish.name,
-                                    // 确保价格转换为浮点数，防范字符串拼接导致的计算 Bug
                                     price: parseFloat(dish.price) || 0.00,
+                                    image_url: dish.image_url, // 👈 核心：就是这行抓到了图片路径
                                     qty: 0
                                 }));
                             }
@@ -211,7 +213,7 @@
 
                                 const incomplete = allOrders.filter(o => o.status === 'pending' || o.status === 'preparing');
                                 if (incomplete.length > 0) {
-                                    $this.currentOrderStatus = incomplete[0].status;
+                                    this.currentOrderStatus = incomplete[0].status; // 修复了原代码中的一个小打字错误 $this
                                 } else {
                                     const delivered = allOrders.filter(o => o.status === 'delivered');
                                     if (delivered.length > 0) {
