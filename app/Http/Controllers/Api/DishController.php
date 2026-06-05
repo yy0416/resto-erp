@@ -80,4 +80,52 @@ class DishController extends Controller
             'message' => '菜品已成功下架！'
         ]);
     }
+
+    // 🎯 新增：修改菜品接口
+    public function update(Request $request, int $id)
+    {
+        // 1. 验证提交的数据
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 新图片可选
+        ]);
+
+        try {
+            $dish = Dish::findOrFail($id);
+            $imageUrl = $dish->image_url; // 默认保留原图片路径
+
+            // 2. 如果用户上传 enemy 新图片，则替换旧图
+            if ($request->hasFile('image')) {
+                // 可选：如果原来有旧图，可以先从存储里删掉旧图，防止占用服务器空间
+                if ($dish->image_url) {
+                    $oldPath = str_replace('/storage/', '', $dish->image_url);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($oldPath);
+                }
+
+                // 存储新图片
+                $path = $request->file('image')->store('dishes', 'public');
+                $imageUrl = \Illuminate\Support\Facades\Storage::url($path);
+            }
+
+            // 3. 更新数据库记录
+            $dish->update([
+                'name' => $request->name,
+                'price' => $request->price,
+                'image_url' => $imageUrl,
+                'restaurant_id' => 1, // 确保强绑定
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '菜品修改成功！',
+                'data' => $dish
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error_message' => 'Laravel 修改失败: ' . $e->getMessage()
+            ], 422);
+        }
+    }
 }
