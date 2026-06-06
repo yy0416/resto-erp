@@ -9,8 +9,7 @@
     <script defer src="https://unpkg.com/alpinejs"></script>
 </head>
 
-<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex" x-data="adminMenuApp()"
-    x-init="fetchDishes()">
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex" x-data="adminMenuApp()" x-init="fetchDishes()">
 
     <aside class="w-64 bg-gray-950 border-r border-gray-800 p-6 flex flex-col justify-between h-screen sticky top-0">
         <div>
@@ -25,7 +24,7 @@
 
             <nav class="space-y-1.5">
                 <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
-                    <span>📊 营业额管理</span>
+                    <span>📊 运营大厅</span>
                 </button>
                 <button @click="currentTab = 'orders'" :class="currentTab === 'orders' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
                     <span>📑 订单流水</span>
@@ -63,6 +62,7 @@
         <div x-show="currentTab === 'tables'">
             @include('admin.tables')
         </div>
+
         <div x-show="currentTab === 'caisse'">
             @include('admin.caisse')
         </div>
@@ -72,8 +72,8 @@
     <script>
         function adminMenuApp() {
             return {
-                // 🎯 补上这个状态变量，供左侧侧边栏控制切换
-                currentTab: 'dishes',
+                // 🎯 优化点：让后台一打开，默认停在最具有成就感的 'dashboard' 报表大厅！
+                currentTab: 'dashboard',
 
                 dishes: [],
                 loading: false,
@@ -118,7 +118,6 @@
                         })
                         .then(async r => {
                             const data = await r.json();
-                            // 🌟 如果后端返回了我们自定义的防爆错误，直接把它作为错误抛出
                             if (!r.ok) {
                                 throw new Error(data.error_message || '未知服务器错误');
                             }
@@ -133,7 +132,6 @@
                             this.fetchDishes();
                         })
                         .catch(err => {
-                            // 🌟 核心：直接把从后端剥离出来的凶手名字，写进左下角红框里
                             this.message = '❌ ' + err.message;
                         })
                         .finally(() => {

@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\RestaurantController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DishController;
+use App\Http\Controllers\Api\ReportController;
+
 
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 Route::post('/restaurants', [RestaurantController::class, 'store']);
@@ -35,3 +37,8 @@ Route::post('orders/{id}/pay', [OrderController::class, 'pay']);
 
 // 🎯 新增：多订单合并收银接口
 Route::post('orders/pay-multiple', [OrderController::class, 'payMultiple']);
+
+
+// 🎯 新增：老板财务报表接口
+Route::get('reports/dashboard', [ReportController::class, 'index']);
+Route::get('reports/history', [ReportController::class, 'history']); // 👈 必须有这一行！
