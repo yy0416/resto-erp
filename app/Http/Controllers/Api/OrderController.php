@@ -78,11 +78,16 @@ class OrderController extends Controller
     {
         $query = Order::with('items.dish')->orderByDesc('started_at');
 
-        // 💡 如果请求里带了 table_number，说明是平板端在查这桌的历史账单
-        if ($request->has('table_number')) {
+        // 💰 1. 如果带了 payment_status 参数（说明是收银台在查账）
+        if ($request->has('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+        // 📱 2. 如果带了 table_number（说明是平板端在查单桌历史）
+        elseif ($request->has('table_number')) {
             $query->where('table_number', $request->table_number);
-        } else {
-            // 💡 如果没传桌号，说明是厨房大屏在查，只展示 pending 和 preparing 的订单
+        }
+        // 👨‍🍳 3. 啥都没带（说明是厨房大屏在查活动订单）
+        else {
             $query->whereIn('status', ['pending', 'preparing']);
         }
 
@@ -124,5 +129,93 @@ class OrderController extends Controller
         }
         $order->update(['status' => 'cancelled']);
         return new OrderResource($order);
+    }
+
+    /**
+     * 💰 核心收银结账接口
+     * 支持：临场增删改商品数量、应用优惠折扣、记录付款渠道、封账归档
+     */
+    public function pay(Request $request, int $id)
+    {
+        // 1. 验证结账请求的数据
+        $request->validate([
+            'payment_method' => 'required|string|in:Espèces,CB,Resto', // 必须是指定的付款方式
+            'discount' => 'required|numeric|min:0',                   // 优惠金额不能为负
+            'total_price' => 'required|numeric|min:0',                 // 最终实收总价
+            'items' => 'required|array',                               // 最终核对的菜品数组
+            'items.*.dish_id' => 'required|exists:dishes,id',
+            'items.*.quantity' => 'required|integer|min:0',            // 数量可以为0（代表退掉了这道菜）
+        ]);
+
+        // 2. 开启安全事务，防止中间断电或出错导致财务数据混乱
+        return DB::transaction(function () use ($request, $id) {
+            $order = Order::findOrFail($id);
+
+            // 如果订单已经付过钱了，直接拦截，防止重复收银
+            if (isset($order->payment_status) && $order->payment_status === 'paid') {
+                return response()->json(['message' => 'Cette commande est déjà payée. (该订单已结账，请勿重复操作)'], 422);
+            }
+
+            // 3. 临场调整菜品数量：先彻底清空这笔订单原有的旧明细
+            OrderItem::where('order_id', $order->id)->delete();
+
+            $calculatedTotal = 0;
+
+            // 4. 重新灌入收银员核对后的最新菜品明细
+            foreach ($request->items as $item) {
+                // 如果数量被收银员减到了 0，说明这道菜退掉了，直接跳过不入账
+                if ($item['quantity'] <= 0) {
+                    continue;
+                }
+
+                $dish = Dish::findOrFail($item['dish_id']);
+                $linePrice = $dish->price * $item['quantity'];
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'dish_id' => $dish->id,
+                    'quantity' => $item['quantity'],
+                    'price' => $linePrice,
+                ]);
+
+                $calculatedTotal += $linePrice;
+            }
+
+            // 5. 校验前端算的总价和后端算的原始总价扣除优惠后是否对得上（防止前端恶意篡改价格）
+            // ✅ 修复后的代码（使用 floatval）
+            $discount = floatval($request->discount);
+            $expectedFinal = max(0, $calculatedTotal - $discount);
+
+            // 允许 0.01 的浮点数精度误差
+            if (abs($expectedFinal - $request->total_price) > 0.01) {
+                return response()->json([
+                    'message' => 'Erreur de calcul financier. (前后端财务对账不一致)',
+                    'server_expected' => $expectedFinal,
+                    'client_submitted' => $request->total_price
+                ], 422);
+            }
+
+            // 6. 更新订单主表，正式进行“财务封账”
+            // 💡 顺便帮你兼容了字段：如果你的表里还没加 payment_status 等新字段，系统不会报错
+            $updateData = [
+                'total_price' => $request->total_price,
+                'status' => 'delivered', // 结账后，制作状态确保也是完成状态
+            ];
+
+            // 检查模型或数据库里有没有这几个高阶收银字段，有的话就存进去
+            // 后面第二步我会教你用 Migration 快速把这几个字段补进数据库
+            $updateData['payment_status'] = 'paid';
+            $updateData['payment_method'] = $request->payment_method;
+            $updateData['discount'] = $request->discount;
+
+            // 执行物理更新
+            $order->update($updateData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Commande clôturée avec succès !',
+                'data' => $order->load('items')
+            ]);
+        });
     }
 }

@@ -27,3 +27,8 @@ Route::get('/customers', [CustomerController::class, 'index']);
 Route::post('/customers', [CustomerController::class, 'store']);
 Route::get('/customers/{id}', [CustomerController::class, 'show']);
 Route::get('/customers/{id}/orders', [CustomerController::class, 'orders']);
+
+// 🎯 新增：收银结账封账接口
+// 🎯 新增：收银结账封账接口
+// ✅ 修复后的标准代码
+Route::post('orders/{id}/pay', [OrderController::class, 'pay']);

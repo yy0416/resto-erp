@@ -17,7 +17,10 @@ class Order extends Model
         'status',
         'order_type',
         'table_number',
-        'started_at'
+        'started_at',
+        'payment_status',
+        'payment_method',
+        'discount'
     ];
     protected $casts = [
         'total_price' => 'float',

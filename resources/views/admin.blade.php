@@ -36,6 +36,9 @@
                 <button @click="currentTab = 'tables'" :class="currentTab === 'tables' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
                     <span>🪑 桌号管理</span>
                 </button>
+                <button @click="currentTab = 'caisse'" :class="currentTab === 'caisse' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
+                    <span>💰 结账收银</span>
+                </button>
             </nav>
         </div>
         <div class="text-[10px] text-gray-600 font-mono font-bold border-t border-gray-800 pt-4">
@@ -59,6 +62,9 @@
 
         <div x-show="currentTab === 'tables'">
             @include('admin.tables')
+        </div>
+        <div x-show="currentTab === 'caisse'">
+            @include('admin.caisse')
         </div>
 
     </main>
