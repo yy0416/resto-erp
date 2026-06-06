@@ -1,13 +1,12 @@
-<div x-data="superDashboardManager()" x-init="initDashboard()" class="space-y-6">
+<div x-data="superDashboardManager()" x-init="initDashboard()" class="space-y-6 relative">
 
     <div class="bg-white p-5 rounded-2xl border-2 border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h2 class="text-xl font-black text-gray-900">📊 Centre de Données (数据与运营大厅)</h2>
             <p class="text-xs text-gray-400 mt-0.5">实时财务盘点、爆款统计及历史账单穿透查询</p>
         </div>
-
         <div class="flex items-center space-x-3 bg-gray-50 p-2 rounded-xl border border-gray-200">
-            <label class="text-xs font-black text-gray-500 uppercase">Observer la Date (查看日期):</label>
+            <label class="text-xs font-black text-gray-500 uppercase">Observer la Date:</label>
             <input type="date" x-model="selectedDate" @change="refreshAllData()"
                 class="bg-white px-3 py-1.5 rounded-lg border border-gray-300 text-gray-900 font-bold font-mono text-sm focus:outline-none focus:border-blue-600">
         </div>
@@ -53,32 +52,30 @@
                             </div>
                         </div>
                         <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                            <div class="bg-blue-600 h-full transition-all duration-500" :style="'width: ' + (dish.total_quantity / topDishes[0].total_quantity * 100) + '%'"></div>
+                            <div class="bg-blue-600 h-full transition-all duration-500" :style="'width: ' + (dish.total_quantity / (topDishes[0]?.total_quantity || 1) * 100) + '%'"></div>
                         </div>
                     </div>
                 </template>
-                <p x-show="topDishes.length === 0" class="text-center text-gray-400 text-sm py-8">Aucune vente. (该日期没有任何销售记录)</p>
+                <p x-show="topDishes.length === 0" class="text-center text-gray-400 text-sm py-8">Aucune vente.</p>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl border-2 border-gray-100 shadow-sm flex flex-col justify-between">
-            <div>
-                <h3 class="text-base font-black text-gray-900 mb-4">💳 Modes de Règlement (收银渠道明细)</h3>
-                <div class="space-y-3">
-                    <template x-for="pay in payments" :key="pay.payment_method">
-                        <div class="p-3 rounded-xl border border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                            <div class="flex items-center space-x-2">
-                                <span x-text="pay.payment_method === 'CB' ? '💳' : (pay.payment_method === 'Espèces' ? '💶' : '🎫')"></span>
-                                <span class="font-bold text-gray-700" x-text="pay.payment_method === 'CB' ? 'Carte Bancaire' : (pay.payment_method === 'Espèces' ? 'Espèces' : 'Ticket Resto')"></span>
-                            </div>
-                            <div class="text-right font-mono">
-                                <p class="font-black text-gray-900 text-sm" x-text="parseFloat(pay.amount).toFixed(2) + ' €'"></p>
-                                <p class="text-[10px] text-gray-400 font-bold" x-text="pay.count + ' 笔交易'"></p>
-                            </div>
+        <div class="bg-white p-6 rounded-2xl border-2 border-gray-100 shadow-sm">
+            <h3 class="text-base font-black text-gray-900 mb-4">💳 Modes de Règlement (收银渠道明细)</h3>
+            <div class="space-y-3">
+                <template x-for="pay in payments" :key="pay.payment_method">
+                    <div class="p-3 rounded-xl border border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            <span x-text="pay.payment_method === 'CB' ? '💳' : (pay.payment_method === 'Espèces' ? '💶' : '🎫')"></span>
+                            <span class="font-bold text-gray-700" x-text="pay.payment_method === 'CB' ? 'Carte Bancaire' : (pay.payment_method === 'Espèces' ? 'Espèces' : 'Ticket Resto')"></span>
                         </div>
-                    </template>
-                    <p x-show="payments.length === 0" class="text-center text-gray-400 text-sm py-8">Aucun encaissement.</p>
-                </div>
+                        <div class="text-right font-mono">
+                            <p class="font-black text-gray-900 text-sm" x-text="parseFloat(pay.amount).toFixed(2) + ' €'"></p>
+                            <p class="text-[10px] text-gray-400 font-bold" x-text="pay.count + ' 笔交易'"></p>
+                        </div>
+                    </div>
+                </template>
+                <p x-show="payments.length === 0" class="text-center text-gray-400 text-sm py-8">Aucun encaissement.</p>
             </div>
         </div>
     </div>
@@ -96,6 +93,7 @@
                             <th class="p-4 text-right">已扣优惠</th>
                             <th class="p-4 text-right">最终实收</th>
                             <th class="p-4 text-center">支付渠道</th>
+                            <th class="p-4 text-center w-28">操作</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 text-xs font-bold">
@@ -123,14 +121,141 @@
                                         :class="{'bg-blue-100 text-blue-800': order.payment_method === 'CB', 'bg-green-100 text-green-800': order.payment_method === 'Espèces', 'bg-amber-100 text-amber-800': order.payment_method === 'Resto'}"
                                         x-text="order.payment_method"></span>
                                 </td>
+                                <td class="p-4 text-center">
+                                    <button @click="openTicket(order)" class="text-gray-500 hover:text-blue-600 font-black bg-gray-100 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition text-[11px] flex items-center space-x-1 mx-auto active:scale-95">
+                                        <span>👁️ Ticket</span>
+                                    </button>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
                 </table>
             </div>
             <div x-show="historyOrders.length === 0" class="text-center py-12 text-gray-400 text-sm bg-gray-50/30">
-                📭 Aucune transaction pour ce jour. (当前日期无任何封账流水)
+                📭 Aucune transaction pour ce jour.
             </div>
+        </div>
+    </div>
+
+    <div x-show="isTicketOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+        style="display: none;"
+        @keydown.escape.window="isTicketOpen = false">
+
+        <div @click.away="isTicketOpen = false"
+            class="relative bg-neutral-100 max-w-sm w-full rounded-2xl shadow-2xl border border-neutral-300 p-5">
+
+            <div class="print:hidden mb-4 bg-white p-2 rounded-xl border border-neutral-200 flex justify-between items-center">
+                <span class="text-xs font-black text-gray-500 pl-1">发票打印模式:</span>
+                <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                    <button @click="ticketMode = 'detail'" :class="ticketMode === 'detail' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-200'" class="px-2.5 py-1 rounded-md text-[11px] font-black transition">
+                        📄 明细小票
+                    </button>
+                    <button @click="ticketMode = 'facture'" :class="ticketMode === 'facture' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-200'" class="px-2.5 py-1 rounded-md text-[11px] font-black transition">
+                        💼 隐藏明细发票
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="ticketMode === 'facture'" class="print:hidden mb-4 bg-purple-50 p-3 rounded-xl border border-purple-100 space-y-2">
+                <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-black text-purple-900">请选择开几个人的用餐 (Repas) ?</label>
+                    <input type="number" min="1" x-model.number="repasCount"
+                        class="w-16 bg-white border-2 border-purple-300 font-mono font-black text-sm text-center px-1 py-1 rounded-lg text-purple-950 focus:outline-none focus:border-purple-600">
+                </div>
+            </div>
+
+            <div class="bg-white p-6 shadow-md border-t-4 border-dashed border-neutral-400 text-neutral-800 font-mono text-xs space-y-4">
+
+                <div class="text-center space-y-0.5 border-b-2 border-dashed border-neutral-300 pb-3">
+                    <h4 class="text-base font-black tracking-widest text-black" x-text="ticketMode === 'detail' ? '*** TICKET DE CAISSE ***' : '*** FACTURE SIMPLIFIÉE ***'"></h4>
+                    <p class="text-[10px] text-neutral-500">12 Rue de la Paix, 75002 Paris</p>
+                    <p class="text-[10px] text-neutral-500">SIRET : 843 920 112 00018 (演示税号)</p>
+                    <p class="text-[10px] font-bold bg-neutral-100 px-2 py-0.5 rounded w-fit mx-auto mt-2 text-neutral-700"
+                        x-text="activeOrder?.table_number ? 'TABLE N° ' + activeOrder.table_number : 'COMMANDE EMPORTER'"></p>
+                </div>
+
+                <div class="space-y-0.5 text-[10px] text-neutral-600 border-b border-neutral-200 pb-2">
+                    <div class="flex justify-between">
+                        <span x-text="ticketMode === 'detail' ? 'Ticket: #' + activeOrder?.id : 'Facture N°: F-2026-' + activeOrder?.id"></span>
+                        <span>Caissier: <b>Admin</b></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Date: <span x-text="selectedDate"></span></span>
+                        <span>Heure: <span x-text="formatTime(activeOrder?.started_at)"></span></span>
+                    </div>
+                </div>
+
+                <div class="space-y-2 py-1">
+                    <div class="flex justify-between font-black text-black text-[11px] border-b border-neutral-200 pb-1">
+                        <span>Désignation</span>
+                        <span>Montant</span>
+                    </div>
+
+                    <div class="space-y-1.5" x-show="ticketMode === 'detail'">
+                        <template x-for="item in activeOrder?.items" :key="item.id">
+                            <div class="flex justify-between items-start">
+                                <div class="max-w-[75%]">
+                                    <span class="font-black text-black mr-1" x-text="item.quantity + 'x'"></span>
+                                    <span x-text="item.dish ? item.dish.name : 'Plat'"></span>
+                                </div>
+                                <span class="font-bold text-black" x-text="(item.price * item.quantity).toFixed(2) + ' €'"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="space-y-1.5" x-show="ticketMode === 'facture'">
+                        <div class="flex justify-between items-start">
+                            <div class="max-w-[75%]">
+                                <span class="font-black text-black mr-1" x-text="repasCount + 'x'"></span>
+                                <span>Repas (Prestation de Restauration)</span>
+                            </div>
+                            <span class="font-bold text-black" x-text="parseFloat(activeOrder?.total_price || 0).toFixed(2) + ' €'"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t-2 border-dashed border-neutral-300 pt-3 space-y-1 text-right text-[11px]">
+                    <div class="flex justify-between text-neutral-500 font-medium" x-show="activeOrder?.discount > 0">
+                        <span>Total Brut:</span>
+                        <span x-text="(parseFloat(activeOrder?.total_price) + parseFloat(activeOrder?.discount || 0)).toFixed(2) + ' €'"></span>
+                    </div>
+                    <div class="flex justify-between text-red-600 font-bold" x-show="activeOrder?.discount > 0">
+                        <span>Remise:</span>
+                        <span x-text="'-' + parseFloat(activeOrder?.discount).toFixed(2) + ' €'"></span>
+                    </div>
+                    <div class="flex justify-between text-base font-black text-black border-t border-neutral-100 pt-1.5">
+                        <span class="tracking-wide">TOTAL NET:</span>
+                        <span class="text-lg" x-text="parseFloat(activeOrder?.total_price || 0).toFixed(2) + ' €'"></span>
+                    </div>
+                </div>
+
+                <div class="bg-neutral-50 p-2.5 rounded-xl border border-neutral-200/60 space-y-1 text-[10px] text-neutral-600">
+                    <div class="flex justify-between">
+                        <span>Mode de Règlement:</span>
+                        <b class="text-black uppercase" x-text="activeOrder?.payment_method"></b>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Dont TVA 10% (餐饮税):</span>
+                        <span x-text="((activeOrder?.total_price || 0) / 11).toFixed(2) + ' €'"></span>
+                    </div>
+                </div>
+
+                <div class="text-center pt-2 text-[10px] text-neutral-400 border-t border-dashed border-neutral-200">
+                    <p class="font-sans italic">Merci de votre visite & À bientôt !</p>
+                </div>
+
+            </div>
+
+            <div class="mt-4 flex gap-3 print:hidden">
+                <button @click="window.print()" class="flex-1 bg-gray-900 hover:bg-gray-800 text-white font-black text-xs py-2.5 rounded-xl transition shadow active:scale-95 flex items-center justify-center space-x-1">
+                    <span>🖨️ 打印当前发票</span>
+                </button>
+                <button @click="isTicketOpen = false" class="w-20 bg-neutral-300 hover:bg-neutral-400 text-neutral-800 font-black text-xs py-2.5 rounded-xl transition active:scale-95">
+                    关闭
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -139,7 +264,7 @@
 <script>
     function superDashboardManager() {
         return {
-            selectedDate: new window.Date().toISOString().split('T')[0], // 默认今天
+            selectedDate: new window.Date().toISOString().split('T')[0],
             summary: {
                 revenue: 0,
                 discount: 0,
@@ -149,14 +274,17 @@
             topDishes: [],
             historyOrders: [],
 
+            // 弹窗与开票控制
+            isTicketOpen: false,
+            activeOrder: null,
+            ticketMode: 'detail', // 'detail'代表明细，'facture'代表不要明细的发票模式
+            repasCount: 1, // 默认买单人数为 1 人份
+
             initDashboard() {
                 this.refreshAllData();
             },
 
-            // 🧠 高能联动：只要日期一改，顺藤摸瓜把四个接口的数据全部按新日期重捞一遍！
             refreshAllData() {
-                // 1. 捞取大牌和排行统计（改写后端让其支持带日期传参，或者我们先请求原本的）
-                // 为了完美配合你的 ReportController，我们稍后去后端小修一下，让 index 也能接收日期！
                 fetch(`/api/reports/dashboard?date=${this.selectedDate}`)
                     .then(r => r.json())
                     .then(res => {
@@ -167,7 +295,6 @@
                         }
                     });
 
-                // 2. 捞取下半部分的历史流水详情表格
                 fetch(`/api/reports/history?date=${this.selectedDate}`)
                     .then(r => r.json())
                     .then(res => {
@@ -175,6 +302,13 @@
                             this.historyOrders = res.data;
                         }
                     });
+            },
+
+            openTicket(order) {
+                this.activeOrder = order;
+                this.ticketMode = 'detail'; // 每次新打开，默认停在明细上
+                this.repasCount = 1; // 人数重置为 1
+                this.isTicketOpen = true;
             },
 
             formatTime(dateTimeStr) {
