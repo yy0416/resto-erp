@@ -218,4 +218,70 @@ class OrderController extends Controller
             ]);
         });
     }
+
+    /**
+     * 💰 宇宙终极：按桌号【多单合并结算】接口
+     */
+    public function payMultiple(Request $request)
+    {
+        $request->validate([
+            'order_ids' => 'required|array',
+            'order_ids.*' => 'exists:orders,id',
+            'payment_method' => 'required|string|in:Espèces,CB,Resto',
+            'discount' => 'required|numeric|min:0',
+            'total_price' => 'required|numeric|min:0',
+            'items' => 'required|array',
+        ]);
+
+        return DB::transaction(function () use ($request) {
+            $orderIds = $request->order_ids;
+
+            // 1. 取出这批订单里的“第一个订单”作为主账单（母体），其余作为子订单
+            $masterOrderId = $orderIds[0];
+            $masterOrder = Order::findOrFail($masterOrderId);
+
+            // 2. 清理这批订单里【所有单】的旧明细（全军出击，全部清空）
+            OrderItem::whereIn('order_id', $orderIds)->delete();
+
+            // 3. 把收银员核对合并后的最终总明细，全部灌进主账单（母体）里
+            foreach ($request->items as $item) {
+                if ($item['quantity'] <= 0) continue;
+
+                $dish = Dish::findOrFail($item['dish_id']);
+                OrderItem::create([
+                    'order_id' => $masterOrder->id, // 统统归入主订单
+                    'dish_id' => $dish->id,
+                    'quantity' => $item['quantity'],
+                    'price' => $dish->price * $item['quantity'],
+                ]);
+            }
+
+            // 4. 将主账单更新为已支付，存入最终优惠和实收总价
+            $masterOrder->update([
+                'total_price' => $request->total_price,
+                'discount' => $request->discount,
+                'payment_status' => 'paid',
+                'payment_method' => $request->payment_method,
+                'status' => 'delivered'
+            ]);
+
+            // 5. 关键一步：把剩下的那些子订单的总价清零、状态改为已付、标记归档
+            // 这样它们就不会在任何活动流水里捣乱了，财务也完全平账！
+            if (count($orderIds) > 1) {
+                $subOrderIds = array_slice($orderIds, 1);
+                Order::whereIn('id', $subOrderIds)->update([
+                    'total_price' => 0,
+                    'discount' => 0,
+                    'payment_status' => 'paid',
+                    'payment_method' => $request->payment_method,
+                    'status' => 'delivered'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Toutes les commandes de la table ont été fusionnées et payées !'
+            ]);
+        });
+    }
 }

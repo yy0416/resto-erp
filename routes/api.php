@@ -32,3 +32,6 @@ Route::get('/customers/{id}/orders', [CustomerController::class, 'orders']);
 // 🎯 新增：收银结账封账接口
 // ✅ 修复后的标准代码
 Route::post('orders/{id}/pay', [OrderController::class, 'pay']);
+
+// 🎯 新增：多订单合并收银接口
+Route::post('orders/pay-multiple', [OrderController::class, 'payMultiple']);
