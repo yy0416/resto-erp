@@ -34,22 +34,45 @@
 
             <div class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 <template x-for="dish in dishes" :key="dish.id">
-                    <div class="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100/70 rounded-xl border border-gray-100 transition">
+                    <div class="flex items-center justify-between p-3 rounded-xl border transition duration-200"
+                        :class="dish.is_available ? 'bg-gray-50 border-gray-100 hover:bg-gray-100/70' : 'bg-gray-100/60 border-gray-200 opacity-75'">
+
                         <div class="flex items-center space-x-4">
-                            <img :src="dish.image_url ? dish.image_url : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop'" class="w-12 h-12 rounded-xl object-cover border">
+                            <img :src="dish.image_url ? dish.image_url : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop'"
+                                class="w-12 h-12 rounded-xl object-cover border"
+                                :class="!dish.is_available && 'grayscale opacity-60'">
                             <div>
                                 <h4 class="font-bold text-gray-800" x-text="dish.name"></h4>
                                 <p class="text-sm font-mono font-bold text-blue-600 mt-0.5" x-text="parseFloat(dish.price).toFixed(2) + ' €'"></p>
                             </div>
                         </div>
 
-                        <div class="flex items-center space-x-2">
-                            <button @click="openEditModal(dish)" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-black px-3 py-2 rounded-xl transition shadow-sm">
-                                ✏️ Modifier
-                            </button>
-                            <button @click="deleteDish(dish.id)" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold p-2 rounded-xl transition">
-                                🗑️
-                            </button>
+                        <div class="flex items-center space-x-4">
+
+                            <div class="flex items-center space-x-2">
+                                <button @click="toggleDishAvailable(dish)"
+                                    :class="dish.is_available ? 'bg-emerald-500' : 'bg-neutral-300'"
+                                    class="w-10 h-5.5 flex items-center rounded-full p-0.5 duration-300 cursor-pointer focus:outline-none shadow-inner relative transition-colors">
+                                    <div :class="dish.is_available ? 'translate-x-4 bg-white' : 'translate-x-0 bg-neutral-500'"
+                                        class="w-4.5 h-4.5 rounded-full shadow duration-300 transform transition-transform"></div>
+                                </button>
+                                <span class="text-[10px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase font-sans"
+                                    :class="dish.is_available ? 'bg-emerald-50 text-emerald-700' : 'bg-neutral-200 text-neutral-600'"
+                                    x-text="dish.is_available ? 'En Vente' : 'Épuisé'">
+                                </span>
+                            </div>
+
+                            <div class="h-6 w-[1px] bg-gray-200"></div>
+
+                            <div class="flex items-center space-x-1.5">
+                                <button @click="openEditModal(dish)" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-xs font-black px-3 py-2 rounded-xl transition shadow-sm">
+                                    ✏️ Modifier
+                                </button>
+                                <button @click="deleteDish(dish.id)" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold p-2 rounded-xl transition">
+                                    🗑️
+                                </button>
+                            </div>
+
                         </div>
                     </div>
                 </template>
@@ -72,21 +95,14 @@
             <form @submit.prevent="updateDish" class="space-y-5">
                 <div>
                     <label class="block text-xs font-black text-gray-500 uppercase mb-1 tracking-wide">Nom du plat (新菜名)</label>
-                    <input type="text"
-                        x-model="editModal.form.name"
-                        required
-                        class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-300 bg-white text-gray-900 font-bold text-sm shadow-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition">
+                    <input type="text" x-model="editModal.form.name" required class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-300 bg-white text-gray-900 font-bold text-sm shadow-sm focus:outline-none focus:border-blue-600 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-black text-gray-500 uppercase mb-1 tracking-wide">Prix (€) (新单价)</label>
-                    <input type="number"
-                        step="0.01"
-                        x-model="editModal.form.price"
-                        required
-                        class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-300 bg-white text-gray-950 font-mono font-black text-base shadow-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition">
+                    <input type="number" step="0.01" x-model="editModal.form.price" required class="w-full px-4 py-2.5 rounded-xl border-2 border-gray-300 bg-white text-gray-950 font-mono font-black text-base shadow-sm focus:outline-none focus:border-blue-600 transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-black text-gray-500 uppercase mb-1 tracking-wide">Remplacer la Photo (更换新图片 - 可选)</label>
+                    <label class="block text-xs font-black text-gray-500 uppercase mb-1 tracking-wide">Remplacer la Photo</label>
                     <div class="mb-2 flex items-center space-x-3 bg-gray-50 p-2 rounded-lg border-2 border-dashed border-gray-200">
                         <img :src="editModal.form.currentImageUrl ? editModal.form.currentImageUrl : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop'" class="w-10 h-10 rounded object-cover shadow-sm">
                         <span class="text-xs text-gray-600 font-bold">当前线上展示图</span>
@@ -119,8 +135,6 @@
                 price: '',
                 imageFile: null
             },
-
-            // 🎯 核心新增 3：在 Alpine 数据仓库里，管理编辑模态框的独立状态域
             editModal: {
                 open: false,
                 loading: false,
@@ -140,6 +154,32 @@
                         this.dishes = res.data || res;
                     })
                     .catch(err => console.error(err));
+            },
+
+            // 🎯 核心新增：Admin 一键划动估清与后端 API 握手方法
+            toggleDishAvailable(dish) {
+                // 1. 前端乐观更新，体验快如闪电
+                dish.is_available = !dish.is_available;
+
+                // 2. 悄悄连线后端 PATCH 通道
+                fetch(`/api/dishes/${dish.id}/toggle-available`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (!res.success) {
+                            // 万一失败了，状态无缝撤回
+                            dish.is_available = !dish.is_available;
+                            alert('更新失败，请重试');
+                        }
+                    })
+                    .catch(err => {
+                        dish.is_available = !dish.is_available;
+                        console.error(err);
+                    });
             },
 
             submitDish() {
@@ -178,17 +218,15 @@
                     });
             },
 
-            // 🎯 核心新增 4：点击编辑按钮，把当前这行菜的数据强行灌入弹窗表单中，并打开弹窗
             openEditModal(dish) {
                 this.editModal.form.id = dish.id;
                 this.editModal.form.name = dish.name;
                 this.editModal.form.price = dish.price;
                 this.editModal.form.currentImageUrl = dish.image_url;
-                this.editModal.form.imageFile = null; // 重置文件选择器
-                this.editModal.open = true; // 唤醒弹窗！
+                this.editModal.form.imageFile = null;
+                this.editModal.open = true;
             },
 
-            // 🎯 核心新增 5：提交修改后的表单（呼叫后端 PUT 请求替换数据）
             updateDish() {
                 this.editModal.loading = true;
 
@@ -198,12 +236,10 @@
                 if (this.editModal.form.imageFile) {
                     formData.append('image', this.editModal.form.imageFile);
                 }
-                // 💡 知识点：由于浏览器原生 FormData 不支持直接发 PUT 请求带文件上传，
-                // 外部必须发送 POST，并带上 Laravel 独有的 _method=PUT 假冒伪装标志！
                 formData.append('_method', 'PUT');
 
                 fetch(`/api/dishes/${this.editModal.form.id}`, {
-                        method: 'POST', // 👈 伪装成 POST 绕过文件封锁，Laravel 底层会识别成 PUT
+                        method: 'POST',
                         body: formData
                     })
                     .then(async r => {
@@ -212,9 +248,9 @@
                         return data;
                     })
                     .then(() => {
-                        alert('✅ Modifications enregistrées ! (修改已成功保存)');
-                        this.editModal.open = false; // 关闭弹窗
-                        this.fetchDishes(); // 无刷新刷新列表！
+                        alert('✅ Modifications enregistrées !');
+                        this.editModal.open = false;
+                        this.fetchDishes();
                     })
                     .catch(err => {
                         alert('❌ ' + err.message);

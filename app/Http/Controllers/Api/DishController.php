@@ -128,4 +128,23 @@ class DishController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * 🍔 一键切换菜品售罄/有货状态
+     * 对应路由：PATCH /api/dishes/{id}/toggle-available
+     */
+    public function toggleAvailable(int $id)
+    {
+        $dish = \App\Models\Dish::findOrFail($id);
+
+        // 状态取反（true 变 false，false 变 true）
+        $dish->is_available = !$dish->is_available;
+        $dish->save();
+
+        return response()->json([
+            'success' => true,
+            'is_available' => $dish->is_available,
+            'message' => $dish->is_available ? '菜品已恢复供应！' : '菜品已成功估清下架！'
+        ]);
+    }
 }

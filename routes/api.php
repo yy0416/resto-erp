@@ -42,3 +42,5 @@ Route::post('orders/pay-multiple', [OrderController::class, 'payMultiple']);
 // 🎯 新增：老板财务报表接口
 Route::get('reports/dashboard', [ReportController::class, 'index']);
 Route::get('reports/history', [ReportController::class, 'history']); // 👈 必须有这一行！
+// 🎯 菜品估清控制路由
+Route::patch('dishes/{id}/toggle-available', [DishController::class, 'toggleAvailable']);

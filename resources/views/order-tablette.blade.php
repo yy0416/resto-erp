@@ -43,31 +43,49 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <template x-for="dish in dishes" :key="dish.id">
-                <div class="flex flex-col justify-between bg-white rounded-2xl border-2 border-gray-100 shadow-sm transition hover:border-blue-100 overflow-hidden">
+                <div class="flex flex-col justify-between bg-white rounded-2xl border-2 border-gray-100 shadow-sm transition hover:border-blue-100 overflow-hidden"
+                    :class="!dish.is_available && 'opacity-65 select-none bg-gray-50/50'">
 
                     <div class="w-full h-40 bg-gray-50 relative overflow-hidden border-b border-gray-100">
                         <img :src="dish.image_url ? dish.image_url : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop'"
                             :alt="dish.name"
-                            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105">
+                            class="w-full h-full object-cover transition-transform duration-300"
+                            :class="dish.is_available ? 'hover:scale-105' : 'grayscale'">
+
+                        <template x-if="!dish.is_available">
+                            <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
+                                <span class="bg-red-600 text-white font-black text-xs uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-lg border-2 border-white transform -rotate-12 select-none animate-fade-in">
+                                    🚫 Sold Out / Épuisé
+                                </span>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="p-4 flex-1 flex flex-col justify-between">
                         <div>
-                            <span class="font-extrabold text-gray-800 block text-lg" x-text="dish.name"></span>
-                            <span class="text-sm text-gray-500 font-semibold block mt-0.5" x-text="dish.price.toFixed(2) + ' €'"></span>
+                            <span class="font-extrabold block text-lg"
+                                :class="dish.is_available ? 'text-gray-800' : 'text-gray-400 line-through'"
+                                x-text="dish.name"></span>
+                            <span class="text-sm font-semibold block mt-0.5"
+                                :class="dish.is_available ? 'text-gray-500' : 'text-gray-400'"
+                                x-text="dish.price.toFixed(2) + ' €'"></span>
                         </div>
 
                         <div class="flex items-center justify-between mt-4 border-t pt-3 border-gray-50">
-                            <button @click="if(dish.qty > 0) dish.qty--"
-                                :class="dish.qty > 0 ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+                            <button @click="if(dish.is_available && dish.qty > 0) dish.qty--"
+                                :class="dish.qty > 0 && dish.is_available ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
                                 class="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 border border-transparent select-none">-</button>
 
-                            <span :class="dish.qty > 0 ? 'text-blue-600 font-black text-xl' : 'text-gray-400 font-bold text-lg'"
+                            <span :class="dish.qty > 0 && dish.is_available ? 'text-blue-600 font-black text-xl' : 'text-gray-400 font-bold text-lg'"
                                 class="w-8 text-center font-mono"
                                 x-text="dish.qty"></span>
 
-                            <button @click="dish.qty++"
-                                class="bg-green-500 hover:bg-green-600 active:scale-95 text-white w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 shadow-md shadow-green-100 select-none">+</button>
+                            <button @click="if(dish.is_available) dish.qty++"
+                                :disabled="!dish.is_available"
+                                :class="dish.is_available ? 'bg-green-500 hover:bg-green-600 active:scale-95 text-white shadow-md shadow-green-100' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                                class="w-10 h-10 rounded-xl font-black text-xl flex items-center justify-center transition-all duration-150 select-none">
+                                <span x-text="dish.is_available ? '+' : '✕'"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -148,6 +166,7 @@
 
                     this.statusTimer = setInterval(() => {
                         this.fetchHistory();
+                        this.fetchMenu(); // 🎯 顺手带上它！每4秒自动去数据库看看大厨有没有把哪道菜关掉！
                     }, 4000);
                 },
 
@@ -167,6 +186,8 @@
                                     name: dish.name,
                                     price: parseFloat(dish.price) || 0.00,
                                     image_url: dish.image_url, // 👈 核心：就是这行抓到了图片路径
+                                    // 🎯 核心注入：如果后端传过来的是 true/1，前端就是 true；否则为 false
+                                    is_available: dish.is_available === true || dish.is_available == 1,
                                     qty: 0
                                 }));
                             }
