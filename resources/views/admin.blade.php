@@ -9,7 +9,7 @@
     <script defer src="https://unpkg.com/alpinejs"></script>
 </head>
 
-<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex" x-data="adminMenuApp()" x-init="fetchDishes()">
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex" x-data="adminMenuApp()" x-init="initApp()">
 
     <aside class="w-64 bg-gray-950 border-r border-gray-800 p-6 flex flex-col justify-between h-screen sticky top-0">
         <div>
@@ -17,21 +17,27 @@
                 <h2 class="text-xl font-black text-white tracking-wider flex items-center space-x-2">
                     <span>⚙️ Resto ERP</span>
                 </h2>
-                <span class="text-[10px] font-mono uppercase bg-blue-900/50 text-blue-400 font-bold px-2 py-0.5 rounded border border-blue-800 mt-2 inline-block">
-                    Super Admin
+
+                <span class="text-[10px] font-mono uppercase font-black px-2 py-0.5 rounded mt-2 inline-block border"
+                    :class="AdminRole === 'admin' ? 'bg-purple-900/40 text-purple-400 border-purple-800' : 'bg-blue-900/40 text-blue-400 border-blue-800'">
+                    <span x-text="AdminRole === 'admin' ? '👑 Owner / Admin' : '💰 Caissier / Staff'"></span>
                 </span>
             </div>
 
             <nav class="space-y-1.5">
+                @if(auth()->user()->role === 'admin')
                 <button @click="currentTab = 'dashboard'" :class="currentTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
                     <span>📊 运营大厅</span>
-                </button>
-                <button @click="currentTab = 'orders'" :class="currentTab === 'orders' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
-                    <span>📑 订单流水</span>
                 </button>
                 <button @click="currentTab = 'dishes'" :class="currentTab === 'dishes' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
                     <span>🍔 菜单管理</span>
                 </button>
+                @endif
+
+                <button @click="currentTab = 'orders'" :class="currentTab === 'orders' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
+                    <span>📑 订单流水</span>
+                </button>
+
                 <button @click="currentTab = 'tables'" :class="currentTab === 'tables' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
                     <span>🪑 桌号管理</span>
                 </button>
@@ -44,19 +50,28 @@
             System v1.0.0 @ 2026 ERP
         </div>
     </aside>
+    <div class="mt-4 border-t border-gray-800 pt-4">
+        <form action="{{ url('/logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="w-full text-center bg-gray-900 hover:bg-red-950/40 text-gray-500 hover:text-red-400 border border-gray-800 hover:border-red-900/60 py-2.5 rounded-xl font-bold text-xs transition select-none">
+                Déconnexion (安全退出) ➔
+            </button>
+        </form>
+    </div>
 
     <main class="flex-1 p-8 overflow-y-auto h-screen">
 
+        @if(auth()->user()->role === 'admin')
         <div x-show="currentTab === 'dashboard'">
             @include('admin.dashboard')
         </div>
+        <div x-show="currentTab === 'dishes'">
+            @include('admin.dishes')
+        </div>
+        @endif
 
         <div x-show="currentTab === 'orders'">
             @include('admin.orders')
-        </div>
-
-        <div x-show="currentTab === 'dishes'">
-            @include('admin.dishes')
         </div>
 
         <div x-show="currentTab === 'tables'">
@@ -72,8 +87,11 @@
     <script>
         function adminMenuApp() {
             return {
-                // 🎯 优化点：让后台一打开，默认停在最具有成就感的 'dashboard' 报表大厅！
-                currentTab: 'dashboard',
+                // 🎯 核心修正：使用标准 JS 字符串包装，骗过 VS Code 的静态检查，同时保证 Laravel 正常输出
+                AdminRole: "" + "{{ auth()->user()->role }}",
+
+                // 🎯 核心修正：同样的方式处理默认 Tab，确保检查器不再误报缺少逗号
+                currentTab: "" + "{{ auth()->user()->role === 'admin' ? 'dashboard' : 'orders' }}",
 
                 dishes: [],
                 loading: false,
@@ -82,6 +100,20 @@
                     name: '',
                     price: '',
                     imageFile: null
+                },
+
+                // ⚡ 初始化函数
+                initApp() {
+                    // 先去拿菜单数据
+                    this.fetchDishes();
+
+                    // 🎯 前端监视拦截器
+                    this.$watch('currentTab', value => {
+                        if (this.AdminRole !== 'admin' && (value === 'dashboard' || value === 'dishes')) {
+                            this.currentTab = 'orders';
+                            alert('🚫 Accès refusé. 您没有权限访问老板专属的机密运营大厅！');
+                        }
+                    });
                 },
 
                 formatPrice(price) {

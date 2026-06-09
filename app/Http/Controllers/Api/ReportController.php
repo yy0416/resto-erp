@@ -15,16 +15,18 @@ class ReportController extends Controller
      * 📊 1. 老板仪表盘核心数据接口 (卡片汇总与爆款排行)
      * 对应路由：GET /api/reports/dashboard
      */
+    /**
+     * 📊 1. 老板仪表盘核心数据接口 (全面升级为 whereDate 防时区干扰版)
+     * 对应路由：GET /api/reports/dashboard
+     */
     public function index(Request $request)
     {
+        // 拿到前端传过来的日期字符串，比如 "2026-06-08"
         $dateStr = $request->query('date', Carbon::today()->toDateString());
 
-        $todayStart = Carbon::parse($dateStr)->startOfDay();
-        $todayEnd = Carbon::parse($dateStr)->endOfDay();
-
-        // 基础查询：选定日期已经付过钱的订单
+        // 🎯 核心防线升级：基础查询改用 whereDate，直接穿透年月日，彻底解决时区卡死导致的 0 营业额问题！
         $todayPaidQuery = Order::where('payment_status', 'paid')
-            ->whereBetween('started_at', [$todayStart, $todayEnd]);
+            ->whereDate('started_at', $dateStr);
 
         // 1. 营业额与优惠汇总
         $financials = (clone $todayPaidQuery)->select(
@@ -44,11 +46,11 @@ class ReportController extends Controller
         $topDishes = OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('dishes', 'order_items.dish_id', '=', 'dishes.id')
             ->where('orders.payment_status', 'paid')
-            ->whereBetween('orders.started_at', [$todayStart, $todayEnd])
+            ->whereDate('orders.started_at', $dateStr) // 👈 这里同步改为 whereDate
             ->select(
                 'dishes.name as dish_name',
                 DB::raw('SUM(order_items.quantity) as total_quantity'),
-                DB::raw('SUM(order_items.price) as total_sales')
+                DB::raw('SUM(order_items.price * order_items.quantity) as total_sales') // 🎯 修正：总销售额应该是 单价 * 数量
             )
             ->groupBy('dishes.id', 'dishes.name')
             ->orderByDesc('total_quantity')

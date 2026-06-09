@@ -180,16 +180,23 @@
                             const menuItems = res.data || res;
 
                             if (Array.isArray(menuItems)) {
-                                // 🎯 新增位置 2：在 map 映射中，把数据库的 image_url 接住传给前端
-                                this.dishes = menuItems.map(dish => ({
-                                    id: dish.id,
-                                    name: dish.name,
-                                    price: parseFloat(dish.price) || 0.00,
-                                    image_url: dish.image_url, // 👈 核心：就是这行抓到了图片路径
-                                    // 🎯 核心注入：如果后端传过来的是 true/1，前端就是 true；否则为 false
-                                    is_available: dish.is_available === true || dish.is_available == 1,
-                                    qty: 0
-                                }));
+                                // 🎯 核心升级：既要同步后端的估清状态，又要死死守住客人的购物车
+                                this.dishes = menuItems.map(dish => {
+                                    // 1. 先去现有的 dishes 列表里找，看看这个菜客人之前是不是已经加过数量了
+                                    const existingDish = this.dishes.find(d => d.id === dish.id);
+
+                                    // 2. 如果之前有点过，就继承它原有的数量；如果没点过，默认才是 0
+                                    const currentQty = existingDish ? existingDish.qty : 0;
+
+                                    return {
+                                        id: dish.id,
+                                        name: dish.name,
+                                        price: parseFloat(dish.price) || 0.00,
+                                        image_url: dish.image_url,
+                                        is_available: dish.is_available === true || dish.is_available == 1,
+                                        qty: currentQty // 👈 完美继承，不再会被 4 秒一次的轮询强行洗白！
+                                    };
+                                });
                             }
                         })
                         .catch(err => {
