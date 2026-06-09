@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\ReportController;
 // 🛒 餐厅与顾客基础信息
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 Route::post('/restaurants', [RestaurantController::class, 'store']); // 如果未来需要改权限再移走
+Route::post('/tables/{id}/update-customers', [RestaurantController::class, 'updateActiveCustomers']);
+
 
 Route::get('/customers', [CustomerController::class, 'index']);
 Route::post('/customers', [CustomerController::class, 'store']);
@@ -37,7 +39,7 @@ Route::patch('/orders/{id}', [OrderController::class, 'update']);             //
 Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);       // 取消订单
 Route::post('orders/{id}/pay', [OrderController::class, 'pay']);             // 收银：单桌结账
 Route::post('orders/pay-multiple', [OrderController::class, 'payMultiple']); // 收银：合并结账
-
+//
 
 
 /*

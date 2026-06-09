@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Admin\TableSettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,15 +42,31 @@ Route::post('/login', [AuthController::class, 'login']);
 |--------------------------------------------------------------------------
 | 🔒 必须登录后才能访问的“全封闭保护区” (Protected Zones)
 |--------------------------------------------------------------------------
-| 挂上了 'auth' 中间件。任何没登录的请求试图强闯，都会被直接重定向轰回 /login 页面！
 */
 Route::middleware(['auth'])->group(function () {
 
-    // ⚙️ 管理员与员工总控制后台 (彻底锁死在这里，安全感拉满)
+    // ⚙️ 通用后台主页（管理员与员工均能查看，但前端菜单根据角色显示不同按钮）
     Route::get('/admin', function () {
-        return view('admin');
+        // 📡 1. 在这里亲手把配置好的桌子按桌号升序捞出来
+        $tables = \App\Models\Table::orderBy('table_number', 'asc')->get();
+
+        // 📦 2. 通过 compact('tables') 顺手把数据送给 admin 视图
+        return view('admin', compact('tables'));
     });
 
     // 🚪 退出登录注销接口
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 👑 仅限老板（Admin）才能操作的硬核基建区
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware([\App\Http\Middleware\IsAdmin::class])->group(function () {
+        Route::get('/tables-setting', [TableSettingController::class, 'index'])->name('admin.tables.index');
+        Route::post('/tables-setting', [TableSettingController::class, 'store'])->name('admin.tables.store');
+        Route::post('/tables-setting/batch', [TableSettingController::class, 'batchGenerate'])->name('admin.tables.batch');
+        Route::delete('/tables-setting/{id}', [TableSettingController::class, 'destroy'])->name('admin.tables.destroy');
+        Route::put('/tables-setting/{id}', [TableSettingController::class, 'update'])->name('admin.tables.update');
+    });
 });

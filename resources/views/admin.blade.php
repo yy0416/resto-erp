@@ -12,6 +12,7 @@
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex" x-data="adminMenuApp()" x-init="initApp()">
 
     <aside class="w-64 bg-gray-950 border-r border-gray-800 p-6 flex flex-col justify-between h-screen sticky top-0">
+
         <div>
             <div class="mb-8 border-b border-gray-800 pb-4">
                 <h2 class="text-xl font-black text-white tracking-wider flex items-center space-x-2">
@@ -32,6 +33,9 @@
                 <button @click="currentTab = 'dishes'" :class="currentTab === 'dishes' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
                     <span>🍔 菜单管理</span>
                 </button>
+                <a href="{{ route('admin.tables.index') }}" class="w-full flex items-center space-x-3 p-3 text-gray-400 hover:bg-gray-800/60 hover:text-white rounded-xl transition font-bold text-left text-sm">
+                    <span>⚙️ 桌位配置 (基建)</span>
+                </a>
                 @endif
 
                 <button @click="currentTab = 'orders'" :class="currentTab === 'orders' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'" class="w-full flex items-center space-x-3 p-3 rounded-xl transition font-bold text-left text-sm">
@@ -46,18 +50,22 @@
                 </button>
             </nav>
         </div>
-        <div class="text-[10px] text-gray-600 font-mono font-bold border-t border-gray-800 pt-4">
-            System v1.0.0 @ 2026 ERP
+
+        <div class="space-y-4">
+
+
+            <form action="{{ url('/logout') }}" method="POST">
+                @csrf
+                <button type="submit" class="w-full text-center bg-gray-900 hover:bg-red-950/40 text-gray-500 hover:text-red-400 border border-gray-800 hover:border-red-900/60 py-2.5 rounded-xl font-bold text-xs transition select-none">
+                    Déconnexion (安全退出) ➔
+                </button>
+            </form>
+            <div class="text-[10px] text-gray-600 font-mono font-bold border-t border-gray-800 pt-4">
+                System v1.0.0 @ 2026 ERP
+            </div>
         </div>
+
     </aside>
-    <div class="mt-4 border-t border-gray-800 pt-4">
-        <form action="{{ url('/logout') }}" method="POST">
-            @csrf
-            <button type="submit" class="w-full text-center bg-gray-900 hover:bg-red-950/40 text-gray-500 hover:text-red-400 border border-gray-800 hover:border-red-900/60 py-2.5 rounded-xl font-bold text-xs transition select-none">
-                Déconnexion (安全退出) ➔
-            </button>
-        </form>
-    </div>
 
     <main class="flex-1 p-8 overflow-y-auto h-screen">
 
@@ -75,7 +83,7 @@
         </div>
 
         <div x-show="currentTab === 'tables'">
-            @include('admin.tables')
+            @include('admin.tables', ['tables' => $tables])
         </div>
 
         <div x-show="currentTab === 'caisse'">
