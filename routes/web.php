@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Admin\TableSettingController;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,7 +13,10 @@ use App\Http\Controllers\Admin\TableSettingController;
 */
 
 // 1. 店内固定平板端
-Route::get('/order-tablette', function () {
+
+// 📱 完美配合你的前端动态抓取
+Route::get('/order-tablette', function (Request $request) {
+    // 平板页面不需要在后端强行 compact，因为它自己在 JS 里面会用 window.location.search 去抓！
     return view('order-tablette');
 });
 

@@ -3,10 +3,40 @@
     selectedTable: null, 
     inputCustomers: 0,
     
-    // 打开弹窗，注入当前点击的桌子信息
-    openManageModal(table) {
-        this.selectedTable = table;
-        this.inputCustomers = table.active_customers;
+    // 📡 【核心新增】：本地内存中的桌位实时雷达状态数组
+    liveTables: @js($tables->toArray()),
+    loopTimer: null,
+
+    // 🚀 初始化雷达
+    initHallRadar() {
+        // 每 4 秒自动执行一次静默数据拉取，不再强制刷新网页！
+        this.loopTimer = setInterval(() => {
+            this.fetchLiveStatus();
+        }, 4000);
+    },
+
+    // 📥 静默拉取最新桌况
+    fetchLiveStatus() {
+        fetch('/api/tables')
+            .then(r => r.json())
+            .then(res => {
+                const fetchedData = res.data || res;
+                if (Array.isArray(fetchedData)) {
+                    // 把最新的状态和就餐人数默默灌入 Alpine 内存，界面上的红绿灯和人数会秒变，但网页绝不重置！
+                    this.liveTables = fetchedData;
+                }
+            })
+            .catch(err => console.error('Radar Sync Error:', err));
+    },
+    
+    // 打开弹窗，从 liveTables 内存中获取最新的状态
+    openManageModal(tableId) {
+        // 根据 ID 去实时内存里找这桌，防止打开的是旧数据
+        const currentTable = this.liveTables.find(t => t.id === tableId);
+        if (!currentTable) return;
+
+        this.selectedTable = currentTable;
+        this.inputCustomers = currentTable.active_customers;
         this.showModal = true;
     },
     
@@ -23,14 +53,17 @@
         .then(r => r.json())
         .then(data => {
             if(data.success) {
-                // 成功后强制刷新当前网页，页面上的灯、人数、颜色会瞬间同步！
-                window.location.reload();
+                // 🎯 【完美改动】：关闭弹窗
+                this.showModal = false;
+                
+                // 🎯 【完美改动】：立刻手动让雷达扫描一次最新状态，桌子秒变色，绝不刷新网页！
+                this.fetchLiveStatus();
             } else {
                 alert('操作失败！');
             }
         });
     }
-}">
+}" x-init="initHallRadar()">
     @csrf
 
     <div class="flex flex-wrap justify-between items-center bg-gray-950 p-5 rounded-2xl border border-gray-800 shadow-xl">
@@ -59,78 +92,56 @@
     </div>
 
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-        @foreach($tables as $table)
-        @php
-        // 🎯 核心黑魔法升级：既支持模糊单字判定，也支持 S1 / T01 这种精简首字母判定
-        $numLower = strtolower($table->table_number);
+        <template x-for="table in liveTables" :key="table.id">
+            <div @click="openManageModal(table.id)"
+                class="border-2 rounded-2xl p-6 flex flex-col justify-between items-center relative transition transform active:scale-95 cursor-pointer shadow-lg group min-h-[160px]"
+                :class="{
+                    // 🪑 Salle 大厅前缀判断
+                    'bg-blue-950/30 border-blue-900/60 hover:border-blue-500 text-blue-100': (table.table_number.toLowerCase().includes('salle') || table.table_number.toLowerCase().startsWith('s')) && table.status === 'empty',
+                    'bg-red-950/40 border-red-900 text-red-100 animate-pulse': table.status === 'occupied',
+                    
+                    // ⛱️ Terrasse 露天前缀判断
+                    'bg-amber-950/20 border-amber-900/50 hover:border-amber-500 text-amber-100': (table.table_number.toLowerCase().includes('terrasse') || table.table_number.toLowerCase().startsWith('t')) && table.status === 'empty',
+                    
+                    // 📦 默认Zone前缀判断
+                    'bg-purple-950/20 border-purple-900/40 hover:border-purple-500 text-purple-100': !table.table_number.toLowerCase().startsWith('s') && !table.table_number.toLowerCase().includes('salle') && !table.table_number.toLowerCase().startsWith('t') && !table.table_number.toLowerCase().includes('terrasse') && table.status === 'empty'
+                }">
 
-        if (str_contains($numLower, 'salle') || str_starts_with($numLower, 's')) {
-        // Salle 大厅系列（S1, S2, Salle-A）：高雅幽蓝色调
-        $bgStyle = $table->status === 'empty'
-        ? "bg-blue-950/30 border-blue-900/60 hover:border-blue-500 text-blue-100"
-        : "bg-red-950/40 border-red-900 text-red-100 animate-pulse"; // 用餐中则亮起红灯警告
-        $badgeStyle = "bg-blue-500/10 text-blue-400 border-blue-800/50";
-        $zoneLabel = "🪑 Salle";
-        } elseif (str_contains($numLower, 'terrasse') || str_contains($numLower, 'terace') || str_starts_with($numLower, 't')) {
-        // Terrasse 露天系列（T1, T02, Terrasse-B）：温馨落日橙调
-        $bgStyle = $table->status === 'empty'
-        ? "bg-amber-950/20 border-amber-900/50 hover:border-amber-500 text-amber-100"
-        : "bg-red-950/40 border-red-900 text-red-100 animate-pulse";
-        $badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-800/50";
-        $zoneLabel = "⛱️ Terrasse";
-        } else {
-        // 默认无前缀或其他：神秘高贵紫
-        $bgStyle = $table->status === 'empty'
-        ? "bg-purple-950/20 border-purple-900/40 hover:border-purple-500 text-purple-100"
-        : "bg-red-950/40 border-red-900 text-red-100 animate-pulse";
-        $badgeStyle = "bg-purple-500/10 text-purple-400 border-purple-800/50";
-        $zoneLabel = "📦 Zone";
-        }
-        @endphp
-
-        <div @click="openManageModal({{ json_encode($table) }})"
-            class="border-2 rounded-2xl p-6 flex flex-col justify-between items-center relative transition transform active:scale-95 cursor-pointer shadow-lg group min-h-[160px] {{ $bgStyle }}">
-
-            <span class="absolute top-2.5 left-2.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border font-mono tracking-wider {{ $badgeStyle }}">
-                {{ $zoneLabel }}
-            </span>
-
-            <div class="absolute top-3 right-3 flex items-center space-x-1">
-                <span class="w-2.5 h-2.5 rounded-full {{ $table->status === 'empty' ? 'bg-emerald-500 shadow-md shadow-emerald-500/80 animate-pulse' : 'bg-rose-500 shadow-md shadow-rose-500/80' }}"></span>
-            </div>
-
-            <div class="text-2xl font-black tracking-widest text-white font-mono mt-6 group-hover:scale-110 transition-transform">
-                {{ $table->table_number }}
-            </div>
-
-            <div class="mt-4 w-full border-t border-gray-800/60 pt-3 text-center">
-                <p class="text-[10px] text-gray-500 font-black uppercase tracking-wider font-mono">
-                    Max: {{ $table->seats_count }} 人座
-                    @if($table->active_customers > 0)
-                    <span class="text-rose-400 ml-1"> (已坐: {{ $table->active_customers }}人)</span>
-                    @endif
-                </p>
-
-                @if($table->status === 'empty')
-                <span class="inline-block text-[11px] text-emerald-400 font-black mt-1 bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/10 uppercase tracking-wide">
-                    Libre (空闲)
+                <span class="absolute top-2.5 left-2.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border font-mono tracking-wider"
+                    :class="{
+                        'bg-blue-500/10 text-blue-400 border-blue-800/50': table.table_number.toLowerCase().includes('salle') || table.table_number.toLowerCase().startsWith('s'),
+                        'bg-amber-500/10 text-amber-400 border-amber-800/50': table.table_number.toLowerCase().includes('terrasse') || table.table_number.toLowerCase().startsWith('t'),
+                        'bg-purple-500/10 text-purple-400 border-purple-800/50': !table.table_number.toLowerCase().startsWith('s') && !table.table_number.toLowerCase().includes('salle') && !table.table_number.toLowerCase().startsWith('t') && !table.table_number.toLowerCase().includes('terrasse')
+                    }"
+                    x-text="(table.table_number.toLowerCase().includes('salle') || table.table_number.toLowerCase().startsWith('s')) ? '🪑 Salle' : ((table.table_number.toLowerCase().includes('terrasse') || table.table_number.toLowerCase().startsWith('t')) ? '⛱️ Terrasse' : '📦 Zone')">
                 </span>
-                @else
-                <span class="inline-block text-[11px] text-rose-400 font-black mt-1 bg-rose-500/5 px-2 py-0.5 rounded-md border border-rose-500/10 uppercase tracking-wide">
-                    Occupé (用餐中)
-                </span>
-                @endif
-            </div>
 
-        </div>
-        @endforeach
+                <div class="absolute top-3 right-3 flex items-center space-x-1">
+                    <span class="w-2.5 h-2.5 rounded-full"
+                        :class="table.status === 'empty' ? 'bg-emerald-500 shadow-md shadow-emerald-500/80 animate-pulse' : 'bg-rose-500 shadow-md shadow-rose-500/80'"></span>
+                </div>
+
+                <div class="text-2xl font-black tracking-widest text-white font-mono mt-6 group-hover:scale-110 transition-transform" x-text="table.table_number"></div>
+
+                <div class="mt-4 w-full border-t border-gray-800/60 pt-3 text-center">
+                    <p class="text-[10px] text-gray-500 font-black uppercase tracking-wider font-mono">
+                        <span x-text="'Max: ' + table.seats_count + ' 人座'"></span>
+                        <span x-show="table.active_customers > 0" class="text-rose-400 ml-1" x-text="' (已坐: ' + table.active_customers + '人)'"></span>
+                    </p>
+
+                    <span class="inline-block text-[11px] font-black mt-1 px-2 py-0.5 rounded-md border uppercase tracking-wide"
+                        :class="table.status === 'empty' ? 'text-emerald-400 bg-emerald-500/5 border-emerald-500/10' : 'text-rose-400 bg-rose-500/5 border-rose-500/10'"
+                        x-text="table.status === 'empty' ? 'Libre (空闲)' : 'Occupé (用餐中)'">
+                    </span>
+                </div>
+
+            </div>
+        </template>
     </div>
 
-    @if($tables->isEmpty())
-    <div class="text-center py-24 bg-gray-950 rounded-2xl border border-gray-800 border-dashed text-gray-500 text-sm font-bold">
+    <div x-show="liveTables.length === 0" class="text-center py-24 bg-gray-950 rounded-2xl border border-gray-800 border-dashed text-gray-500 text-sm font-bold">
         📭 餐厅没有配置任何桌位。
     </div>
-    @endif
 
     <div x-show="showModal"
         class="fixed inset-0 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"

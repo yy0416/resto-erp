@@ -44,6 +44,27 @@ class OrderController extends Controller
                 'started_at' => Carbon::now(),
             ]);
 
+            // 🎯 【核心新增】：让变色沙盘和平板点单实时联动的灵动核心！
+            if ($request->order_type === 'dine_in' && $request->filled('table_number')) {
+                // 1. 去数据库里把对应的这张桌子抓出来
+                $formattedTableNumber = strtoupper(trim($request->table_number));
+                $table = \App\Models\Table::where('table_number', $request->table_number)->first();
+
+                if ($table) {
+                    // 2. 将桌位状态瞬间改为 'occupied'（用餐中）
+                    $table->status = 'occupied';
+
+                    // 3. 智能加人：如果之前后台没有手动设置就餐人数（即 active_customers 为 0）
+                    // 既然下了单，说明肯定有人坐，我们自动将其兜底设为 1 人，或者你也可以维持它原本的人数
+                    if ($table->active_customers == 0) {
+                        $table->active_customers = 1;
+                    }
+
+                    // 4. 保存桌位状态，闪烁沙盘！
+                    $table->save();
+                }
+            }
+
             $total = 0;
 
             // 创建订单明细
@@ -74,17 +95,33 @@ class OrderController extends Controller
      * 🌟 升级后的订单列表接口
      * 同时兼容：厨房大屏（查全店未完成）和平板端（查单桌所有历史+带价格明细）
      */
+    /**
+     * 🌟 升级后的订单列表接口
+     * 完美隔离：收银台查全店未付 / 平板端仅查本桌未付 / 厨房大屏查待制作
+     */
     public function index(Request $request)
     {
         $query = Order::with('items.dish')->orderByDesc('started_at');
 
-        // 💰 1. 如果带了 payment_status 参数（说明是收银台在查账）
+        // 💰 1. 如果带了 payment_status 参数（说明是收银台在查账，比如 ?payment_status=unpaid）
         if ($request->has('payment_status')) {
             $query->where('payment_status', $request->payment_status);
+
+            // 💡 顺便帮收银台优化：如果收银台也传了桌号，可以精准查单桌未付，没传就查全店未付
+            if ($request->has('table_number')) {
+                $query->where('table_number', $request->table_number);
+            }
         }
-        // 📱 2. 如果带了 table_number（说明是平板端在查单桌历史）
+        // 📱 2. 如果单独带了 table_number（说明是平板端在查单桌历史）
         elseif ($request->has('table_number')) {
-            $query->where('table_number', $request->table_number);
+            $query->where('table_number', $request->table_number)
+                ->where(function ($q) {
+                    // 🎯 核心隔离门：平板端只能看到【未结账】或者【根本还没支付状态】的当前就餐订单！
+                    // 结完账的老订单直接隐藏，防止吃着吃着看到上一个客人的消费记录！
+                    $q->where('payment_status', 'unpaid')
+                        ->orWhereNull('payment_status')
+                        ->orWhere('payment_status', '!=', 'paid');
+                });
         }
         // 👨‍🍳 3. 啥都没带（说明是厨房大屏在查活动订单）
         else {
@@ -211,6 +248,18 @@ class OrderController extends Controller
             // 执行物理更新
             $order->update($updateData);
 
+
+            // 🎯 【核心新增】：结账成功后，自动释放桌子清空客座！
+            if ($order->order_type === 'dine_in' && $order->table_number) {
+                $formattedTableNumber = strtoupper(trim($order->table_number));
+                $tableObj = \App\Models\Table::where('table_number', $formattedTableNumber)->first();
+                if ($tableObj) {
+                    $tableObj->status = 'empty';
+                    $tableObj->active_customers = 0;
+                    $tableObj->save(); // 强行把它擦除变绿
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Commande clôturée avec succès !',
@@ -276,6 +325,15 @@ class OrderController extends Controller
                     'payment_method' => $request->payment_method,
                     'status' => 'delivered'
                 ]);
+            }
+            if ($masterOrder->table_number) { // 合并结账一定是堂食，直接判断有没有桌号即可
+                $formattedTableNumber = strtoupper(trim($masterOrder->table_number));
+                $tableObj = \App\Models\Table::where('table_number', $formattedTableNumber)->first();
+                if ($tableObj) {
+                    $tableObj->status = 'empty';
+                    $tableObj->active_customers = 0;
+                    $tableObj->save(); // 强行把它擦除变绿
+                }
             }
 
             return response()->json([

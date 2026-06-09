@@ -19,7 +19,9 @@ use App\Http\Controllers\Api\ReportController;
 Route::get('/restaurants', [RestaurantController::class, 'index']);
 Route::post('/restaurants', [RestaurantController::class, 'store']); // 如果未来需要改权限再移走
 Route::post('/tables/{id}/update-customers', [RestaurantController::class, 'updateActiveCustomers']);
-
+Route::get('/tables', function () {
+    return \App\Models\Table::orderBy('table_number')->get();
+});
 
 Route::get('/customers', [CustomerController::class, 'index']);
 Route::post('/customers', [CustomerController::class, 'store']);
