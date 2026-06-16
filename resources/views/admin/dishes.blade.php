@@ -1,3 +1,5 @@
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 <div x-data="dishesManager()" x-init="fetchDishes()" class="space-y-6 relative">
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -156,22 +158,25 @@
                     .catch(err => console.error(err));
             },
 
-            // 🎯 核心新增：Admin 一键划动估清与后端 API 握手方法
             toggleDishAvailable(dish) {
-                // 1. 前端乐观更新，体验快如闪电
                 dish.is_available = !dish.is_available;
 
-                // 2. 悄悄连线后端 PATCH 通道
+                // 💡 顺便对估清划动请求也注入安全 Token，保障操作稳定性
+                const tokenTag = document.querySelector('meta[name="csrf-token"]');
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (tokenTag) {
+                    headers['X-CSRF-TOKEN'] = tokenTag.content;
+                }
+
                 fetch(`/api/dishes/${dish.id}/toggle-available`, {
                         method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
+                        headers: headers
                     })
                     .then(r => r.json())
                     .then(res => {
                         if (!res.success) {
-                            // 万一失败了，状态无缝撤回
                             dish.is_available = !dish.is_available;
                             alert('更新失败，请重试');
                         }
@@ -193,11 +198,19 @@
                     formData.append('image', this.form.imageFile);
                 }
 
+                // 🛠️ 同步修复：上架菜品也通过 FormData 塞入验证 Token
+                const tokenTag = document.querySelector('meta[name="csrf-token"]');
+                if (tokenTag) {
+                    formData.append('_token', tokenTag.content);
+                }
+
                 fetch('/api/dishes', {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        headers: {}
                     })
                     .then(async r => {
+                        if (r.status === 419) throw new Error('安全令牌失效，请刷新页面后重新添加。');
                         const data = await r.json();
                         if (!r.ok) throw new Error(data.error_message || '未知服务器错误');
                         return data;
@@ -221,7 +234,7 @@
             openEditModal(dish) {
                 this.editModal.form.id = dish.id;
                 this.editModal.form.name = dish.name;
-                this.editModal.form.price = dish.price;
+                this.editModal.form.price = parseFloat(dish.price) || 0;
                 this.editModal.form.currentImageUrl = dish.image_url;
                 this.editModal.form.imageFile = null;
                 this.editModal.open = true;
@@ -238,11 +251,27 @@
                 }
                 formData.append('_method', 'PUT');
 
+                // 🎯 完美嵌入：不破损文件上传 boundary 的前提下，直接将 Token 编入表单数据
+                const tokenTag = document.querySelector('meta[name="csrf-token"]');
+                if (tokenTag) {
+                    formData.append('_token', tokenTag.content);
+                }
+
                 fetch(`/api/dishes/${this.editModal.form.id}`, {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        headers: {} // 保持为空，由浏览器自动计算 multipart 边界
                     })
                     .then(async r => {
+                        if (r.status === 419) {
+                            throw new Error('安全令牌(Token)失效或页面过期，请刷新整个网页重新操作。');
+                        }
+
+                        const contentType = r.headers.get("content-type");
+                        if (!contentType || !contentType.includes("application/json")) {
+                            throw new Error('服务器没有正常返回 JSON 数据，请确保服务器逻辑未崩溃。');
+                        }
+
                         const data = await r.json();
                         if (!r.ok) throw new Error(data.error_message || '修改失败');
                         return data;
@@ -263,8 +292,16 @@
             deleteDish(id) {
                 if (!confirm('Voulez-vous vraiment supprimer ce plat ?')) return;
 
+                // 💡 顺便对删除菜品请求也注入安全 Token
+                const tokenTag = document.querySelector('meta[name="csrf-token"]');
+                const headers = {};
+                if (tokenTag) {
+                    headers['X-CSRF-TOKEN'] = tokenTag.content;
+                }
+
                 fetch(`/api/dishes/${id}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        headers: headers
                     })
                     .then(() => {
                         this.fetchDishes();
